@@ -23,11 +23,17 @@ ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
 # 连接到远程服务器
 ssh.connect(host, username=username, password=password)
+# 类别文件夹在服务器的路径
+server_img_dir_path = '/home/kinth/mfq/PaddleVideo/data/invigilator/all_frames_half/hands_down'
+# 在服务器中过滤到哪个文件夹
+server_img_dir_outpath = '/home/kinth/mfq/PaddleVideo/data/invigilator/filter/hands_down'
 
 #播放视频帧（输入参数：视频帧文件夹路径，上一个视频路径，上一个视频是否过滤，上一个视频是否保留）
 def handle_video(frames_dir,last_path,last_filter,last_reserve):
     frame_list=sorted([os.path.join(frames_dir,f) for f in os.listdir(frames_dir)]) #按顺序排序
     dir_name_path=os.path.dirname(frames_dir) #处理视频帧的文件夹的相对路径
+    frames_name=frames_dir.split('\\')[-1]
+    server_img_path = server_img_dir_path+"/"+frames_name  # 服务器中视频帧文件夹名
     while True:
         FILTER=False  #是否过滤视频
         RESERVE=False #是否保留视频
@@ -79,16 +85,14 @@ def handle_video(frames_dir,last_path,last_filter,last_reserve):
             os.makedirs(target_path)
         move(frames_dir, target_path)
 
+        # 执行移动文件命令
+        ssh.exec_command(f'mv {server_img_path} {server_img_dir_outpath}')  # 在服务器中进行文件夹移动
+
     return FILTER,RESERVE
 
 if __name__ == '__main__':
 
-    #类别文件夹在服务器的路径
-    server_img_dir_path='/home/kinth/mfq/PaddleVideo/data/invigilator/all_frames_half/hands_down'
-    #在服务器中过滤到哪个文件夹
-    server_img_dir_outpath = '/home/kinth/mfq/PaddleVideo/data/invigilator/filter/hands_down'
-
-    category="filter/hands_down" #对哪个类别进行过滤，文件夹需要以类别命名，类别更换时需要手动更改
+    category="hands_down" #对哪个类别进行过滤，文件夹需要以类别命名，类别更换时需要手动更改
     dir_list=os.listdir(category)
     last_path='' #记录上一个视频帧的文件夹路径，防止误处理
     last_filter=last_reserve=False
@@ -96,7 +100,3 @@ if __name__ == '__main__':
         dir_path=os.path.join(category,dir)
         last_filter,last_reserve=handle_video(dir_path,last_path,last_filter,last_reserve)
         last_path=dir_path
-        # 执行移动文件命令
-        server_img_path=os.path.join(server_img_dir_path,dir) #服务器中视频帧文件夹名
-        server_img_outpath=os.path.join(server_img_dir_outpath,dir) #服务器中视频帧文件夹名
-        ssh.exec_command(f'mv {server_img_path} {server_img_outpath}') #在服务器中进行文件夹移动
